@@ -7,6 +7,7 @@ import bibid.dto.AuctionImageDto;
 import bibid.entity.Auction;
 import bibid.entity.AuctionDetail;
 import bibid.entity.Member;
+import bibid.schedular.SpecialAuctionSchedular;
 import bibid.repository.auction.AuctionRepository;
 import bibid.service.auction.AuctionService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 @Slf4j
 public class AuctionServiceImpl implements AuctionService {
+
+    private final SpecialAuctionSchedular specialAuctionSchedular;
     private final AuctionRepository auctionRepository;
     private final FileUtils fileUtils;
 
@@ -37,10 +40,15 @@ public class AuctionServiceImpl implements AuctionService {
                                  Pageable pageable) {
         auctionDto.setRegdate(LocalDateTime.now());
         auctionDto.setModdate(LocalDateTime.now());
+        auctionDto.setAuctionStatus("대기중");
 
         Auction auction = auctionDto.toEntity(member);
         AuctionDetail auctionDetail = auctionDetailDto.toEntity(auction);
         auction.setAuctionDetail(auctionDetail);
+
+        if(auctionDto.getAuctionType().equals("실시간 경매")){
+            specialAuctionSchedular.scheduleChannelAllocation(auctionDto.getAuctionIndex(), auctionDto.getStartingLocalDateTime());
+        }
 
         if (thumbnail != null) {
 

@@ -1,6 +1,7 @@
 package bibid.livestation.service;
 
 import bibid.dto.ResponseDto;
+import bibid.entity.Auction;
 import bibid.exception.errorCode.MakeSignatureException;
 import bibid.livestation.domain.LiveStationChannel;
 import bibid.livestation.dto.*;
@@ -20,16 +21,17 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
 public class LiveStationService {
-    @Value("${ncp.accessKey}")
+    @Value("${live.ncp.accessKey}")
     String accessKey;
-    @Value("${ncp.secretKey}")
+    @Value("${live.ncp.secretKey}")
     String secretKey;
-    @Value("${cloud.aws.s3.bucket.name}")
+    @Value("${live.cloud.aws.s3.bucket.name}")
     String bucket;
 
     String liveStationUrl = "https://livestation.apigw.ntruss.com/api/v2/channels";
@@ -74,7 +76,7 @@ public class LiveStationService {
             CdnDTO cdnDTO = CdnDTO.builder()
                     .createCdn(true)
                     .cdnType("GLOBAL_EDGE")
-                    .profileId(2551)
+                    .profileId(null)
                     .regionType("KOREA")
                     .build();
             RecordDTO recordDTO = RecordDTO.builder()
@@ -127,7 +129,7 @@ public class LiveStationService {
         }
     }
 
-    public List<LiveStationChannel> getChannelList(){
+    public List<LiveStationChannel> getChannelList() {
         try {
             StringBuilder urlBuilder = new StringBuilder();
             urlBuilder.append(liveStationUrl);
@@ -155,10 +157,21 @@ public class LiveStationService {
 
             List<LiveStationChannel> channelList = new ArrayList<>();
 
-            for (ContentDTO contentDTO : response.getBody().getContent()) {  // response.getBody().getContent()가 리스트라면
+            for (ContentDTO contentDTO : response.getBody().getContent()) {
+
+                String channelId = contentDTO.getChannelId();
+
+                List<String> serviceUrlList = getServiceURL(channelId, "GENERAL").stream()
+                        .map(LiveStationUrlDTO::getUrl).collect(Collectors.toList());
+
                 LiveStationChannel channel = LiveStationChannel.builder()
-                        .channelId(contentDTO.getChannelId())
+                        .channelId(channelId)
+                        .channelStatus(contentDTO.getChannelStatus())
                         .cdnInstanceNo(contentDTO.getCdn().getInstanceNo())
+                        .cdnStatusName(contentDTO.getCdn().getStatusName())
+                        .publishUrl(contentDTO.getPublishUrl())
+                        .streamKey(contentDTO.getStreamKey())
+                        .serviceUrlList(serviceUrlList)
                         .build();
 
                 // 생성된 객체를 리스트에 추가
@@ -360,7 +373,7 @@ public class LiveStationService {
             }
 
             return dto;
-        }catch (URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e.getMessage());
         }
     }

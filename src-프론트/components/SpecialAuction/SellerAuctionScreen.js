@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { getFormattedRemainingTime } from '../../util/utils';
 import SAsellerSteamingBox from './SAsellerStreamingBox';
 import '../../css/SpecialAuction/SAitem.css';
-import VideoSection from './VideoSection';
 
 function SellerAuctionScreen({ 
   webSocketProps, auction, remainingTime, closeSellerPage
@@ -31,15 +30,6 @@ function SellerAuctionScreen({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-
-  const streamingUrl = [
-    { url: 'https://fc5tfbqp4957.edge.naverncp.com/live/video/ls-20241019200434-KK3dq/1080p-16-9/playlist.m3u8' }
-    
-  ];
-
-  const streamingUrl2 = [
-    { url: 'https://fc5tfbqp4957.edge.naverncp.com/live/video/ls-20241019195928-leCFe/1080p-16-9/playlist.m3u8' }
-  ];
   
 
   return (
@@ -59,20 +49,7 @@ function SellerAuctionScreen({
                       <img id='SAmikeOffIcon' src='/images/mike_off_icon.svg' alt="Mic Off" />
                       <img id='SAmikeOnIcon' src='/images/mike_on_icon.svg' alt="Mic On" />
                     </div>
-                    {/* <img src="/images/streaming_img.png" alt="Product" className="SAsellerProductImage" /> */}
-                    {/* <VideoSection streamingUrl={streamingUrl}  style={{
-                        width: '52vh',
-                        height: '31vh',
-                        marginRight: '2rem'
-                      }} 
-                    > </VideoSection> */}
-                     {/* <VideoSection streamingUrl={streamingUrl2}  style={{
-                        width: '52vh',
-                        height: '31vh',
-                        marginRight: '2rem'
-                      }} 
-                    > </VideoSection> */}
-
+                    <img src="/images/streaming_img.png" alt="Product" className="SAsellerProductImage" />
                   </div>
 
                   <div className="SAsellerAuctionDetails">

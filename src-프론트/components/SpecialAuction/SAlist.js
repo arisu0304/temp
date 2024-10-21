@@ -14,7 +14,7 @@
   import BidConfirmationPopup from './BidConfirmationPopup';
   import AuctionEndPopup from './AuctionEndPopup';
   import SAitem from './SAitem';
-  import axios from 'axios';
+import axios from 'axios';
 
   function SAlist({ activeTab }) {
 
@@ -27,12 +27,6 @@
 
     const { liveAuctionList, blindAuctionList } = useSelector((state) => state.specialAuctionSlice);
     const loginMemberNickname = useSelector((state) => state.memberSlice.nickname);
-    
-    useEffect(() => {
-      console.log(loginMemberNickname);
-    }, []);
-
-
     const [selectedAuction, setSelectedAuction] = useState(null);
     const [remainingTime, setRemainingTime] = useState('');
     const [hasAuctionEnded, setHasAuctionEnded] = useState(false);
@@ -63,7 +57,7 @@
           {auctionList.map((auction, index) => {
             const thumbnailImage = auction.auctionImageDtoList.find((image) => image.thumbnail === true);
             const imageSrc = thumbnailImage
-              ? `https://kr.object.ncloudstorage.com/bitcamp121/${thumbnailImage.filepath}${thumbnailImage.filename}`
+              ? `https://kr.object.ncloudstorage.com/bitcamp119/${thumbnailImage.filepath}${thumbnailImage.filename}`
               : '/images/defaultFileImg.png';
 
             return (
@@ -91,10 +85,8 @@
 
 
     const handleGoButtonClick = (auction) => {
-
       setSelectedAuction(auction);
-      console.log(loginMemberNickname);
-      console.log("12313232");
+
       webSocketProps.setCurrentPrice(auction.startingPrice);
       webSocketProps.setBidAmount(auction.startingPrice);
     
@@ -119,61 +111,6 @@
         }
       }
     };
-
-  // useEffect는 컴포넌트의 최상위 레벨에서 정의합니다.
-  useEffect(() => {
-    if (selectedAuction) {
-      const fetchStreamingInfo = async () => {
-        try {
-          const token = localStorage.getItem('ACCESS_TOKEN');
-
-          // 첫 번째 API 호출로 streaming 정보 가져오기
-          const response = await axios.get(`http://localhost:8080/specialAuction/streaming?auctionIndex=${selectedAuction.auctionIndex}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          const streamingData = response.data.item;
-          console.log('Streaming Info:', streamingData);
-
-          // channelId 가져오기
-          const { channelId } = streamingData;
-
-          if (channelId) {
-            // 두 번째 API 호출로 채널 정보를 가져오기
-            const channelInfoResponse = await axios.get(`http://localhost:8080/specialAuction/streamingInfo?channelId=${channelId}`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-
-            const channelInfo = channelInfoResponse.data.item;
-            console.log('Channel Info:', channelInfo);
-          }
-
-          if (channelId) {
-            // 세 번째 API 호출로 서비스 url을 가져오기
-            const serviceUrlResponse = await axios.get(`http://localhost:8080/specialAuction/serviceUrl?channelId=${channelId}`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-
-            const serviceUrl = serviceUrlResponse.data.items;
-            console.log('serviceUrl:', serviceUrl);
-          }
-
-        } catch (error) {
-          console.error('Error fetching streaming or channel info:', error);
-        }
-      };
-
-      // 비동기 함수 호출
-      fetchStreamingInfo();
-    }
-  }, [selectedAuction]); // selectedAuction이 변경될 때마다 실행
-
     
     useEffect(() => {
       if (selectedAuction) {

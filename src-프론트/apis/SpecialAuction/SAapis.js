@@ -7,7 +7,7 @@ export const getAuctionData = createAsyncThunk(
     try {
       const token = localStorage.getItem('ACCESS_TOKEN');
 
-      const response = await axios.get('http://localhost:8080/specialAuction/auctions', {
+      const response = await axios.get('http://localhost:8080/specialAuction', {
         params: {
           auctionType: auctionType,
         },

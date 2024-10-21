@@ -18,6 +18,4 @@ public class LiveStationInfoDTO {
 
     private String publishUrl;
     private String streamKey;
-
-    private int lectureId;
 }

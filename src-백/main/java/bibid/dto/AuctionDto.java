@@ -32,14 +32,13 @@ public class AuctionDto {
     private Long instantPurchasePrice; // 즉시 구매가격
     private Boolean autoReauctionEnabled; // 자동재경매 여부
     private Long reauctionStartingPrice; // 재경매 시작가
-    private String auctionStatus; // 경매 상태 ('준비중', '진행중', '낙찰', '유찰', '완료')
+    private String auctionStatus; // 경매 상태 ('대기중', '준비중', '방송중', '낙찰', '종료')
     private Long viewCnt; // 조회수
 
     private LocalDateTime regdate; // 경매 등록시간
     private LocalDateTime moddate; // 경매 수정시간
 
     private List<AuctionImageDto> auctionImageDtoList;
-    private boolean isStreamingCreated;
     private boolean isChatRoomCreated;
     private List<AuctionInfoDto> auctionInfoDtoList;
     private AuctionDetailDto auctionDetailDto;
@@ -66,8 +65,6 @@ public class AuctionDto {
                 .regdate(this.regdate)
                 .moddate(this.moddate)
                 .auctionImageList(new ArrayList<>())
-                .streaming(null)
-                .isStreamingCreated(this.isStreamingCreated)
                 .chatRoom(null)
                 .isChatRoomCreated(this.isChatRoomCreated)
                 .auctionDetail(null)

@@ -6,7 +6,7 @@ import bibid.dto.ResponseDto;
 import bibid.entity.CustomUserDetails;
 import bibid.repository.MemberRepository;
 import bibid.service.auction.AuctionService;
-import bibid.specialAuction.service.SpecialAuctionService;
+import bibid.service.specialAuction.SpecialAuctionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

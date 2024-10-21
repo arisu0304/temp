@@ -54,7 +54,7 @@ public class Auction {
     private Long instantPurchasePrice; // 즉시 구매가격
     private Boolean autoReauctionEnabled; // 자동재경매 여부
     private Long reauctionStartingPrice; // 재경매 시작가
-    private String auctionStatus; // 경매 상태 ('준비중', '진행중', '낙찰', '유찰', '완료')
+    private String auctionStatus; // 경매 상태 ('대기중', '준비중', '방송중', '방송종료', '낙찰', '완료')
     private Long viewCnt; // 조회수
 
     private LocalDateTime regdate; // 경매 등록시간
@@ -64,13 +64,6 @@ public class Auction {
     @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<AuctionImage> auctionImageList;
-
-    // 스트리밍과의 비식별 1:1 관계
-    @OneToOne(mappedBy = "auction", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private Streaming streaming;
-
-    private boolean isStreamingCreated;
 
     // 채팅방과의 비식별 1:1 관계
     @OneToOne(mappedBy = "auction", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -111,10 +104,12 @@ public class Auction {
                 .viewCnt(this.viewCnt)
                 .regdate(this.regdate)
                 .moddate(this.moddate)
-                .isStreamingCreated(this.isStreamingCreated)
                 .isChatRoomCreated(this.isChatRoomCreated)
                 .auctionImageDtoList(
                         Optional.ofNullable(auctionImageList).map(list -> list.stream().map(AuctionImage::toDto).toList())
+                                .orElse(new ArrayList<>()))
+                .auctionInfoDtoList(
+                        Optional.ofNullable(auctionInfoList).map(list -> list.stream().map(AuctionInfo::toDto).toList())
                                 .orElse(new ArrayList<>()))
                 .auctionDetailDto(this.auctionDetail != null ? this.auctionDetail.toDto() : null)
                 .build();
