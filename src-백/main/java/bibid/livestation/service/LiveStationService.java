@@ -1,10 +1,10 @@
 package bibid.livestation.service;
 
 import bibid.dto.ResponseDto;
-import bibid.entity.Auction;
 import bibid.exception.errorCode.MakeSignatureException;
-import bibid.livestation.domain.LiveStationChannel;
+import bibid.livestation.entity.LiveStationChannel;
 import bibid.livestation.dto.*;
+import bibid.livestation.entity.LiveStationServiceUrl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -129,7 +128,7 @@ public class LiveStationService {
         }
     }
 
-    public List<LiveStationChannel> getChannelList() {
+    public List<LiveStationChannelDTO> getChannelList() {
         try {
             StringBuilder urlBuilder = new StringBuilder();
             urlBuilder.append(liveStationUrl);
@@ -153,31 +152,25 @@ public class LiveStationService {
             RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<LiveStationResponseListDTO> response = restTemplate.exchange(new URI(url), HttpMethod.GET, httpEntity, LiveStationResponseListDTO.class);
 
-            System.out.println(response);
-
-            List<LiveStationChannel> channelList = new ArrayList<>();
+            List<LiveStationChannelDTO> channelDTOList = new ArrayList<>();
 
             for (ContentDTO contentDTO : response.getBody().getContent()) {
 
                 String channelId = contentDTO.getChannelId();
 
-                List<String> serviceUrlList = getServiceURL(channelId, "GENERAL").stream()
-                        .map(LiveStationUrlDTO::getUrl).collect(Collectors.toList());
-
-                LiveStationChannel channel = LiveStationChannel.builder()
+                LiveStationChannelDTO channelDTO = LiveStationChannelDTO.builder()
                         .channelId(channelId)
                         .channelStatus(contentDTO.getChannelStatus())
                         .cdnInstanceNo(contentDTO.getCdn().getInstanceNo())
                         .cdnStatusName(contentDTO.getCdn().getStatusName())
                         .publishUrl(contentDTO.getPublishUrl())
                         .streamKey(contentDTO.getStreamKey())
-                        .serviceUrlList(serviceUrlList)
+                        .isAvailable(false)
                         .build();
 
-                // 생성된 객체를 리스트에 추가
-                channelList.add(channel);
+                channelDTOList.add(channelDTO);
             }
-            return channelList;
+            return channelDTOList;
 
         } catch (URISyntaxException e) {
             throw new RuntimeException(e.getMessage());

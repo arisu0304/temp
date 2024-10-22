@@ -2,7 +2,7 @@ package bibid.service.specialAuction.impl;
 
 import bibid.dto.AuctionDto;
 import bibid.entity.Auction;
-import bibid.livestation.domain.LiveStationChannel;
+import bibid.livestation.entity.LiveStationChannel;
 import bibid.livestation.service.LiveStationPoolManager;
 import bibid.repository.specialAuction.SpecialAuctionRepository;
 import bibid.repository.specialAuction.StreamingRepository;

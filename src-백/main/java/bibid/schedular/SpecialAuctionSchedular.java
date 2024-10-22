@@ -1,7 +1,8 @@
 package bibid.schedular;
 
 import bibid.entity.Auction;
-import bibid.livestation.domain.LiveStationChannel;
+import bibid.livestation.entity.LiveStationChannel;
+import bibid.livestation.service.LiveStationPoolManager;
 import bibid.repository.auction.AuctionRepository;
 import bibid.repository.specialAuction.SpecialAuctionRepository;
 import bibid.service.specialAuction.SpecialAuctionService;
@@ -25,6 +26,7 @@ public class SpecialAuctionSchedular {
     private final AuctionRepository auctionRepository;
     private final TaskScheduler taskScheduler;
     private final SpecialAuctionRepository specialAuctionRepository;
+    private final LiveStationPoolManager liveStationPoolManager;
     private ScheduledFuture<?> futureTask;
 
     public void scheduleChannelAllocation(Long auctionIndex, LocalDateTime startingLocalDateTime) {
@@ -33,20 +35,18 @@ public class SpecialAuctionSchedular {
 
         futureTask = taskScheduler.schedule(() -> {
             try {
-                LiveStationChannel channel = specialAuctionService.allocateAvailableChannel(auctionIndex);
+                LiveStationChannel allocatedChannel = liveStationPoolManager.allocateChannel();
+
                 Auction auction = auctionRepository.findById(auctionIndex)
                         .orElseThrow(() -> new RuntimeException("옥션을 찾을 수 없습니다."));
 
                 auction.setAuctionStatus("준비중");
+                auction.setLiveStationChannel(allocatedChannel);
                 auctionRepository.save(auction);
-                if (channel != null) {
-                    System.out.println("옥션 " + auctionIndex + "에 대한 채널 할당 성공: " + channel.getChannelId());
-                    System.out.println("옥션 " + auctionIndex + "에 대한 채널 할당 실패");
-                    System.out.println("새로운 채널 생성 - 10분 정도의 시간이 소요됩니다.");
-                } else {
-                    System.out.println("옥션 " + auctionIndex + "에 대한 채널 할당 실패");
-                    System.out.println("새로운 채널 생성 - 10분 정도의 시간이 소요됩니다.");
-                }
+                
+                /*
+                *  할당할 때 채널 생성하는 로직을 allocateChannel에 줄지 이 스케쥴러에서 줄지는 고민
+                * */
 
             } catch (Exception e) {
                 System.out.println("채널 할당 중 오류 발생: " + e.getMessage());
@@ -54,34 +54,25 @@ public class SpecialAuctionSchedular {
         }, scheduleDate);
     }
 
-//    public void cancelScheduledTask() {
-//        if (futureTask != null && !futureTask.isCancelled()) {
-//            futureTask.cancel(true);  // 작업 취소
-//            System.out.println("스케줄링 작업 취소됨.");
-//        }
-//    }
-
-
     @Scheduled(fixedRate = 15 * 60 * 1000)  // 15분마다 실행 (단위: 밀리초)
     public void checkAndReallocateChannels() {
 
         List<Auction> activeAuctions = getActiveRealtimeAuctions();
 
         for (Auction auction : activeAuctions) {
+
+            if(auction.)
             LocalDateTime currentTime = LocalDateTime.now();
             LocalDateTime auctionStartTime = auction.getStartingLocalDateTime();
 
             if ( auctionStartTime.minusMinutes(30).isBefore(currentTime) ) {
 
-                LiveStationChannel channel = specialAuctionService.allocateAvailableChannel(auction.getAuctionIndex());
-                if (channel == null) {
-                    System.out.println("채널 할당 실패: " + auction.getAuctionIndex());
-                } else {
-                    auction.setChannelId(channel.getChannelId());
-                    auction.setAuctionStatus("방송 준비중");
-                    auctionRepository.save(auction);
-                    System.out.println("채널 할당 성공: " + channel.getChannelId());
-                }
+                LiveStationChannel allocatedChannel = liveStationPoolManager.allocateChannel();
+
+                auction.setAuctionStatus("준비중");
+                auction.setLiveStationChannel(allocatedChannel);
+                auctionRepository.save(auction);
+
             }
         }
     }

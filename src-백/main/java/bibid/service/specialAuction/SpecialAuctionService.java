@@ -2,7 +2,7 @@ package bibid.service.specialAuction;
 
 import bibid.dto.AuctionDto;
 import bibid.dto.StreamingDto;
-import bibid.livestation.domain.LiveStationChannel;
+import bibid.livestation.entity.LiveStationChannel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

@@ -1,8 +1,14 @@
 package bibid.livestation.service;
 
-import bibid.livestation.domain.LiveStationChannel;
+import bibid.livestation.dto.LiveStationChannelDTO;
+import bibid.livestation.dto.LiveStationServiceUrlDTO;
+import bibid.livestation.dto.LiveStationUrlDTO;
+import bibid.livestation.entity.LiveStationChannel;
+import bibid.livestation.entity.LiveStationServiceUrl;
+import bibid.livestation.repository.LiveStationChannelRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -12,48 +18,78 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LiveStationPoolManager {
 
+
     private final LiveStationService liveStationService;
-    private Queue<LiveStationChannel> channelPool;
-    private Map<Long, LiveStationChannel> assignedChannels = new HashMap<>();
+    private final LiveStationChannelRepository channelRepository;
+    private Queue<LiveStationChannel> channelPool = new LinkedList<>();  // 채널을 메모리에 관리
+    private final RedisTemplate<String, LiveStationChannel> redisTemplate; // Redis 사용
 
     @PostConstruct
     public void initializePool() {
-        channelPool = new LinkedList<>();  // 큐로 변경
-        List<LiveStationChannel> preCreatedChannels = liveStationService.getChannelList();
 
-        for (LiveStationChannel liveStationChannel : preCreatedChannels) {
-            String channelStatus = liveStationChannel.getChannelStatus();
-            String cdnStatus = liveStationChannel.getCdnStatusName();
+        List<LiveStationChannel> existingChannels = channelRepository.findAll();
 
-            if(channelStatus.equals("READY") && cdnStatus.equals("RUNNING") ){
-                liveStationChannel.setAvailable(true);
-                channelPool.offer(liveStationChannel);
-            }else {
-                liveStationChannel.setAvailable(false);
-                channelPool.offer(liveStationChannel);
-                System.out.println("채널 " + liveStationChannel.getChannelId() + "은 사용할 수 없습니다. 채널 상태: " + channelStatus + ", CDN 상태: " + cdnStatus);
+        if (existingChannels.isEmpty()) {
+            System.out.println("DB에 채널이 없습니다. API로부터 채널을 가져옵니다.");
+            List<LiveStationChannelDTO> preCreatedChannelDTOList = liveStationService.getChannelList();
+
+            for (LiveStationChannelDTO preCreatedChannelDTO : preCreatedChannelDTOList) {
+                LiveStationChannel preCreatedChannel = configureChannel(preCreatedChannelDTO);
+                channelRepository.save(preCreatedChannel);
             }
         }
     }
 
-    public LiveStationChannel getAvailableChannel() {
+    private LiveStationChannel configureChannel(LiveStationChannelDTO preCreatedChannelDTO) {
+        String channelId = preCreatedChannelDTO.getChannelId();
+        String cdnStatusName = preCreatedChannelDTO.getCdnStatusName();
+        String channelStatus = preCreatedChannelDTO.getChannelStatus();
 
-        LiveStationChannel channel = channelPool.poll();  // 큐에서 제거하며 가져옴
+        LiveStationChannel preCreatedChannel = preCreatedChannelDTO.toEntity();
 
-        // 만약 큐가 비었을 경우 새 채널 생성 로직 (필요한 경우)
-//    if (channel == null) {
-//        // 새 채널 생성 로직
-//        String newChannelId = liveStationService.createChannel("상품 이름");  // 새로운 채널 생성
-//        channel = new LiveStationChannel(newChannelId, ...);  // 새로 생성한 채널 객체
-//        channelPool.offer(channel);  // 새 채널을 다시 큐에 추가
-//    }
-        return channel;
+        if (cdnStatusName.equals("RUNNING")) {
+            List<LiveStationServiceUrl> serviceUrlList = liveStationService.getServiceURL(channelId, "GENERAL")
+                    .stream()
+                    .map(liveStationUrlDTO -> LiveStationServiceUrl.builder()
+                            .liveStationChannel(preCreatedChannel)
+                            .serviceUrl(liveStationUrlDTO.getUrl())
+                            .build()
+                    )
+                    .toList();
+            preCreatedChannel.setServiceUrlList(serviceUrlList);
+        }
+
+        preCreatedChannel.setAvailable(cdnStatusName.equals("RUNNING") && channelStatus.equals("READY"));
+
+        return preCreatedChannel;
+    }
+
+
+    public LiveStationChannel allocateChannel() {
+
+        LiveStationChannel allocatedChannel = channelRepository.findFirstByIsAvailableTrue()
+                .orElseThrow(() -> new RuntimeException("사용 가능한 채널이 없습니다."));
+        
+        /* 
+        * 이 부분에는 만약 가용 채널이 없다면 livestationService의 createChannel 메소드를 호출하고
+        * cdn 생성 완료까지 기다린 후 DB에 반영하고
+        * 이를 다시 꺼내오는 방식의 로직을 추가
+        * */
+
+        allocatedChannel.setChannelStatus("PUBLISH");
+        allocatedChannel.setAvailable(false);
+        
+        channelRepository.save(allocatedChannel);
+
+        return allocatedChannel;
     }
 
     public void releaseChannel(LiveStationChannel channel) {
 
+        channel.setChannelStatus("READY");
         channel.setAvailable(true);
-        channelPool.offer(channel);
+
+        channelRepository.save(channel);
     }
 
 }

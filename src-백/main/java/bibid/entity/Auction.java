@@ -1,6 +1,7 @@
 package bibid.entity;
 
 import bibid.dto.AuctionDto;
+import bibid.livestation.entity.LiveStationChannel;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -81,6 +82,10 @@ public class Auction {
     @OneToOne(mappedBy = "auction", cascade = CascadeType.ALL)
     @JsonManagedReference
     private AuctionDetail auctionDetail;
+
+    @OneToOne
+    @JoinColumn(name = "liveStationChannelIndex")
+    private LiveStationChannel liveStationChannel;  // 경매에 할당된 LiveStationChannel
 
     public AuctionDto toDto() {
         return AuctionDto.builder()
