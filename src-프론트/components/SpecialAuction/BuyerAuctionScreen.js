@@ -1,75 +1,69 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getFormattedRemainingTime } from '../../util/utils';
 import axios from 'axios';
-
-function BuyerAuctionScreen({ 
-  webSocketProps, auction, remainingTime, closeBuyerPopup, handleShowSellerInfo
+import VideoSection from './VideoSection';
+function BuyerAuctionScreen({
+  webSocketProps, auction, remainingTime, closeBuyerPopup, handleShowSellerInfo, openBidConfirmPopup
 }) {
 
-  useEffect(() => {
-    const fetchStreamingInfo = async () => {
-      try {
-        // API 호출로 streaming 정보 가져오기
-        const token = localStorage.getItem('ACCESS_TOKEN');
+  const [streamingUrl, setStreamingUrl] = useState([]);
 
-        const response = await axios.get(`http://localhost:8080/streaming?auctionIndex=${auction.auctionIndex}`, {
+  useEffect(() => {
+    const fetchChannelInfo = async () => {
+      try {
+
+        const token = localStorage.getItem('ACCESS_TOKEN');
+        const response = await axios.get(`http://localhost:8080/specialAuction/channelInfo/${auction.auctionIndex}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        const streamingData = response.data.item; // response에서 streaming data 추출
-  
-        // streaming 관련 데이터를 적절히 처리 (예: UI 업데이트 등)
-        console.log('Streaming Info:', streamingData);
+        const channelInfoDto = response.data.item; 
+
+        setStreamingUrl(channelInfoDto.serviceUrlList);
+
       } catch (error) {
         console.error('Error fetching streaming info:', error);
       }
     };
-  
-    // 비동기 함수 호출
-    fetchStreamingInfo();
-  }, [auction.auctionIndex]); 
+   
+    fetchChannelInfo();
+  }, [auction.auctionIndex]);
 
-  const { messages, inputMessage, setInputMessage, sendMessage, currentPrice, bidAmount, setBidAmount, handleBidSubmit } = webSocketProps;
-  
+  const { messages, inputMessage, setInputMessage, sendMessage, currentPrices, bidAmounts, setBidAmounts, handleBidSubmit } = webSocketProps;
   const messagesEndRef = useRef(null);
-
-  const formattedCurrentPrice = currentPrice?.toLocaleString() || '0';
-
+  const formattedCurrentPrice = (currentPrices[auction?.auctionIndex] || auction.startingPrice)?.toLocaleString();
   const auctionEndTime = new Date(auction.endingLocalDateTime);
-  const formattedAuctionEndTime = auctionEndTime.toLocaleString('ko-KR'); // 한국어 로케일 적용
+  const formattedAuctionEndTime = auctionEndTime.toLocaleString('ko-KR');
+  const formattedBidAmount = (bidAmounts[auction?.auctionIndex] || auction.startingPrice)?.toLocaleString();
+  const formattedBidIncrement = auction.bidIncrement?.toLocaleString() || '0'; 
 
-  const formattedBidAmount = bidAmount?.toLocaleString() || '0';
-  const formattedBidIncrement = auction.bidIncrement?.toLocaleString() || '0'; // 입찰 단위 기본값 처리
-
-  // 구매수수료 계산 (10% 후 1,000단위 내림)
   const calculateFee = (price) => Math.floor((price * 0.1) / 1000) * 1000;
+  const purchaseFee = calculateFee(currentPrices[auction?.auctionIndex] || auction.startingPrice);
 
-  // 예상 구매가 계산
-  const purchaseFee = calculateFee(currentPrice);
-  const expectedPurchasePrice = currentPrice + purchaseFee;
-
+  const expectedPurchasePrice = (currentPrices[auction?.auctionIndex] || auction.startingPrice) + purchaseFee;
   const formattedExpectedPurchasePrice = expectedPurchasePrice?.toLocaleString() || '0';
   const formattedPurchaseFee = purchaseFee?.toLocaleString() || '0';
 
-  // 입찰가 증가 함수
   const handleBidIncrease = () => {
-    setBidAmount(bidAmount + auction.bidIncrement);
+    webSocketProps.setBidAmounts((prev) => ({
+      ...prev,
+      [auction.auctionIndex]: (prev[auction.auctionIndex] || auction.startingPrice) + auction.bidIncrement,
+    }));
   }
-  
-  // 입찰가 감소 함수
-  const handleBidDecrease = () => {
-    setBidAmount(bidAmount - auction.bidIncrement);
-  };
 
+  const handleBidDecrease = () => {
+    webSocketProps.setBidAmounts((prev) => ({
+      ...prev,
+      [auction.auctionIndex]: Math.max((prev[auction.auctionIndex] || auction.startingPrice) - auction.bidIncrement, auction.startingPrice),
+    }));
+  };
   const formattedRemainingTime = getFormattedRemainingTime(remainingTime);
 
-  // 메시지를 전송하는 핸들러
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') sendMessage();
   };
-  
-  // 메시지 스크롤을 맨 아래로 이동
+ 
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -97,10 +91,10 @@ function BuyerAuctionScreen({
                   <img id='SAsoundOffIcon' src='/images/sound_off_icon.svg' alt="Sound Off" />
                   <img id='SAsoundOnIcon' src='/images/sound_on_icon.svg' alt="Sound On" />
                 </div>
-                <img src="/images/streaming_img.png" alt="Product" className="SAproductImage" />
+                {/* <img src="/images/streaming_img.png" alt="Product" className="SAsellerProductImage" /> */}
+                <VideoSection streamingUrl = {streamingUrl}></VideoSection>
                 <h2>{auction.productName}</h2>
               </div>
-
               {/* Product Information Section */}
               <div className="SAproductInfo">
                 <div className="SAsellerInfo">
@@ -149,7 +143,6 @@ function BuyerAuctionScreen({
                     <button className="SAmoreInfoButton" onClick={handleShowSellerInfo}>판매자 정보 더보기</button>
                   </div>
                 </div>
-
                 <div className="SAauctionInfoBox">
                   <div className="SAauctionInfo">
                     <div className='SAauctionInfoTitle'>
@@ -182,20 +175,19 @@ function BuyerAuctionScreen({
                     </div>
                   </div>
                   <div className='SAbidSubmitButtonBox'>
-                    <button className="SAbidSubmitButton" onClick={handleBidSubmit}>입찰하기</button>
+                    <button className="SAbidSubmitButton" onClick={openBidConfirmPopup}>입찰하기</button>
                   </div>
                 </div>
               </div>
             </div>
-
             {/* Chat Section */}
             <div className="SAchatContainer">
               <div className="SAchatSection">
                 <div>
                   <ul>
-                    {messages.map((msg, index) => (
+                  {webSocketProps.messages[auction?.auctionIndex]?.map((msg, index) => (
                       <li key={index}>{msg.senderNickname}: {msg.chatMessage}</li>
-                    ))}
+                    )) || <li>메시지가 없습니다.</li>}
                     <div ref={messagesEndRef} />
                   </ul>
                 </div>
@@ -211,8 +203,7 @@ function BuyerAuctionScreen({
                 />
               </div>
             </div>
-
-          </div>    
+          </div>
         </div>
         <button className="SAtotalBoxCloseButton" onClick={closeBuyerPopup}>
           <img src='/images/white_close_button_icon.svg' alt="close button" />
@@ -221,5 +212,4 @@ function BuyerAuctionScreen({
     </div>
   );
 }
-
 export default BuyerAuctionScreen;

@@ -2,26 +2,19 @@ import { useState, useEffect } from 'react';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { useSelector } from 'react-redux';
-
 const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
-
   const loginMemberNickname = useSelector((state) => state.memberSlice.nickname);
-
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState({});
   const [inputMessage, setInputMessage] = useState('');
   const [stompClient, setStompClient] = useState(null);
   const [connected, setConnected] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState();
-  const [bidAmount, setBidAmount] = useState();
-
+  const [currentPrices, setCurrentPrices] = useState({});
+  const [bidAmounts, setBidAmounts] = useState({});
   // WebSocket 연결 함수
   useEffect(() => {
-
-    if (!auctionIndex || !isChatClosed) return;
-
+    if (!auctionIndex || isChatClosed) return;
     const connectWebSocket = () => {
       let token = localStorage.getItem('ACCESS_TOKEN');
-
       const socket = new SockJS('http://localhost:8080/ws');
       const client = new Client({
         webSocketFactory: () => socket,
@@ -31,26 +24,27 @@ const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
         onConnect: () => {
           setConnected(true);
           console.log("웹소켓 연결되었습니다.");
-
-          setMessages([]); // 이전 메시지 초기화
-
+          setMessages((prev) => ({ ...prev, [auctionIndex]: [] }));
           // 채팅 구독
           client.subscribe(`/topic/public/${auctionIndex}`, (message) => {
             const newMessage = JSON.parse(message.body);
             console.log("Message received:", newMessage);
-            setMessages((prevMessages) => [...prevMessages, newMessage]);
+            setMessages((prevMessages) => ({
+              ...prevMessages,
+              [auctionIndex]: [...(prevMessages[auctionIndex] || []), newMessage],
+            }));
           });
-
+          // 경매 구독
           client.subscribe(`/topic/auction/${auctionIndex}`, (message) => {
               const auctionInfo = JSON.parse(message.body);
               console.log("Bid received:", auctionInfo);
-      
-              // 입찰 정보를 처리
               if (auctionInfo.bidAmount) {
-                  setCurrentPrice(auctionInfo.bidAmount); // 현재가 업데이트
+                setCurrentPrices((prev) => ({
+                  ...prev,
+                  [auctionIndex]: auctionInfo.bidAmount,
+                }));
               }
           });
-          
           // 방에 입장할 때 메시지 초기화
           // 입장 메시지 전송
           sendJoinMessage(client, auctionIndex);
@@ -63,16 +57,13 @@ const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
       setStompClient(client);
       setIsChatClosed(true);
     };
-
     connectWebSocket();
-
     return () => {
       if (stompClient) {
         stompClient.deactivate();
       }
     };
   }, [auctionIndex, isChatClosed]);
-
   // 메시지 전송 함수
   const sendMessage = () => {
     if (connected && stompClient) {
@@ -86,7 +77,6 @@ const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
       setInputMessage(''); // 입력 초기화
     }
   };
-
   // 입장 메시지 전송
   const sendJoinMessage = (client, auctionIndex) => {
     const joinMessage = `${loginMemberNickname}님이 입장하셨습니다.`;
@@ -97,14 +87,12 @@ const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
         chatMessage: joinMessage,
       }),
     });
-
-    const welcomeMessage = '채팅방에 입장하셨습니다. 환영합니다.';
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { chatMessage: welcomeMessage, senderNickname: '시스템' },
-    ]);
+    // const welcomeMessage = '채팅방에 입장하셨습니다. 환영합니다.';
+    // setMessages((prevMessages) => [
+    //   ...prevMessages,
+    //   { chatMessage: welcomeMessage, senderNickname: '시스템' },
+    // ]);
   };
-
   // 퇴장 메시지 전송
   const sendLeaveMessage = () => {
     if (connected && stompClient) {
@@ -118,21 +106,22 @@ const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
       });
     }
   };
-
-  // 입찰 버튼 클릭 시 처리 함수
-  const handleBidSubmit = () => {
-    if (bidAmount > currentPrice) {
-      setBidAmount(bidAmount);
-
+  const handleBidSubmit = (auctionIndex, bidAmount) => {
+    if (bidAmount > currentPrices[auctionIndex]) {
+      setBidAmounts((prev) => ({
+        ...prev,
+        [auctionIndex]: bidAmount,
+      }));
       stompClient.publish({
         destination: `/app/auction.bid/${auctionIndex}`,
         body: JSON.stringify({ auctionIndex, bidAmount }),
       });
     } else {
       alert('입찰가는 현재가보다 높아야 합니다.');
+      console.log(bidAmount + " : 입찰가");
+      console.log(currentPrices[auctionIndex] + " : 현재가");
     }
   };
-
   return {
     messages,
     inputMessage,
@@ -140,11 +129,10 @@ const useWebSocket = (auctionIndex, isChatClosed, setIsChatClosed) => {
     sendMessage,
     sendLeaveMessage,
     handleBidSubmit,
-    currentPrice,
-    setCurrentPrice,
-    bidAmount,
-    setBidAmount
+    currentPrices,
+    setCurrentPrices,
+    bidAmounts,
+    setBidAmounts
   };
 };
-
 export default useWebSocket;

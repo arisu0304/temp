@@ -6,8 +6,9 @@ import bibid.dto.AuctionDto;
 import bibid.dto.AuctionImageDto;
 import bibid.entity.Auction;
 import bibid.entity.AuctionDetail;
+import bibid.entity.ChatRoom;
 import bibid.entity.Member;
-import bibid.schedular.SpecialAuctionSchedular;
+import bibid.schedular.SpecialAuctionScheduler;
 import bibid.repository.auction.AuctionRepository;
 import bibid.service.auction.AuctionService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ import java.util.Arrays;
 @Slf4j
 public class AuctionServiceImpl implements AuctionService {
 
-    private final SpecialAuctionSchedular specialAuctionSchedular;
+    private final SpecialAuctionScheduler specialAuctionScheduler;
     private final AuctionRepository auctionRepository;
     private final FileUtils fileUtils;
 
@@ -47,7 +48,13 @@ public class AuctionServiceImpl implements AuctionService {
         auction.setAuctionDetail(auctionDetail);
 
         if(auctionDto.getAuctionType().equals("실시간 경매")){
-            specialAuctionSchedular.scheduleChannelAllocation(auctionDto.getAuctionIndex(), auctionDto.getStartingLocalDateTime());
+            ChatRoom chatRoom = ChatRoom.builder()
+                    .roomName("경매 " + auctionDto.getProductName() + " 채팅방")
+                    .createdAt(LocalDateTime.now())
+                    .auction(auction)
+                    .build();
+            auction.setChatRoom(chatRoom);
+            specialAuctionScheduler.scheduleChannelAllocation(auctionDto.getAuctionIndex(), auctionDto.getStartingLocalDateTime());
         }
 
         if (thumbnail != null) {

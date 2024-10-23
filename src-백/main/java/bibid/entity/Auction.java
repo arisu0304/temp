@@ -55,7 +55,7 @@ public class Auction {
     private Long instantPurchasePrice; // 즉시 구매가격
     private Boolean autoReauctionEnabled; // 자동재경매 여부
     private Long reauctionStartingPrice; // 재경매 시작가
-    private String auctionStatus; // 경매 상태 ('대기중', '준비중', '방송중', '방송종료', '낙찰', '완료')
+    private String auctionStatus; // 경매 상태 ('대기중', '준비중', '방송중', '방송종료', '낙찰', '유찰', '종료')
     private Long viewCnt; // 조회수
 
     private LocalDateTime regdate; // 경매 등록시간
@@ -71,8 +71,6 @@ public class Auction {
     @JsonManagedReference
     private ChatRoom chatRoom;
 
-    private boolean isChatRoomCreated;
-
     // 경매 정보
     @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL)
     @JsonManagedReference
@@ -85,7 +83,7 @@ public class Auction {
 
     @OneToOne
     @JoinColumn(name = "liveStationChannelIndex")
-    private LiveStationChannel liveStationChannel;  // 경매에 할당된 LiveStationChannel
+    private LiveStationChannel liveStationChannel;
 
     public AuctionDto toDto() {
         return AuctionDto.builder()
@@ -109,7 +107,6 @@ public class Auction {
                 .viewCnt(this.viewCnt)
                 .regdate(this.regdate)
                 .moddate(this.moddate)
-                .isChatRoomCreated(this.isChatRoomCreated)
                 .auctionImageDtoList(
                         Optional.ofNullable(auctionImageList).map(list -> list.stream().map(AuctionImage::toDto).toList())
                                 .orElse(new ArrayList<>()))

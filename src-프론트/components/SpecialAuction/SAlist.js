@@ -14,7 +14,6 @@
   import BidConfirmationPopup from './BidConfirmationPopup';
   import AuctionEndPopup from './AuctionEndPopup';
   import SAitem from './SAitem';
-import axios from 'axios';
 
   function SAlist({ activeTab }) {
 
@@ -57,7 +56,7 @@ import axios from 'axios';
           {auctionList.map((auction, index) => {
             const thumbnailImage = auction.auctionImageDtoList.find((image) => image.thumbnail === true);
             const imageSrc = thumbnailImage
-              ? `https://kr.object.ncloudstorage.com/bitcamp119/${thumbnailImage.filepath}${thumbnailImage.filename}`
+              ? `https://kr.object.ncloudstorage.com/bitcamp121/${thumbnailImage.filepath}${thumbnailImage.filename}`
               : '/images/defaultFileImg.png';
 
             return (
@@ -85,21 +84,40 @@ import axios from 'axios';
 
 
     const handleGoButtonClick = (auction) => {
-      setSelectedAuction(auction);
 
-      webSocketProps.setCurrentPrice(auction.startingPrice);
-      webSocketProps.setBidAmount(auction.startingPrice);
+      setSelectedAuction(auction);
+      setIsChatClosed(false);
+
+      webSocketProps.setCurrentPrices((prev) => ({
+        ...prev,
+        [auction.auctionIndex]: prev[auction.auctionIndex] ||
+          (auction.auctionInfoDtoList?.length > 0
+            ? auction.auctionInfoDtoList[auction.auctionInfoDtoList.length - 1].bidAmount
+            : auction.startingPrice)
+      }));
+
+      webSocketProps.setBidAmounts((prev) => ({
+        ...prev,
+        [auction.auctionIndex]: prev[auction.auctionIndex] ||
+          (auction.auctionInfoDtoList?.length > 0
+            ? auction.auctionInfoDtoList[auction.auctionInfoDtoList.length - 1].bidAmount
+            : auction.startingPrice)
+      }));
     
       const now = new Date();
-      const auctionEndTime = new Date(auction.endingLocalDateTime);
       const auctionStartTime = new Date(auction.startingLocalDateTime);
+      const auctionEndTime = new Date(auction.endingLocalDateTime);
       
       const userIsSeller = auction.memberNickname === loginMemberNickname;
     
-      if (hasAuctionEnded || now > auctionEndTime) {
+      // 경매 종료 여부 확인 후 상태 업데이트
+      if (now > auctionEndTime) {
+        setHasAuctionEnded(true);
         togglePopup('showEndPopup', true); // 경매 종료 팝업
         return;
       }
+
+      setHasAuctionEnded(false); // 경매가 아직 종료되지 않았으므로 false로 설정
     
       if (userIsSeller) {
         togglePopup('showSellerAuctionScreen', true); // 판매자 경매 화면 열기
@@ -119,7 +137,7 @@ import axios from 'axios';
           const auctionEndTime = new Date(selectedAuction.endingLocalDateTime);
           const timeDifference = auctionEndTime - now;
     
-          if (timeDifference > 0) {
+          if (timeDifference >= 0) {
             setRemainingTime(timeDifference);
           } else {
             setHasAuctionEnded(true);
@@ -138,13 +156,14 @@ import axios from 'axios';
         {/* 팝업 컴포넌트들 */}
         {popupState.showAlertPopup && <AlertPopup auction={selectedAuction} handleClosePopup={() => togglePopup('showAlertPopup', false)} />}
         {popupState.showBuyerPopup && !popupState.showBuyerAuctionScreen && <BuyerWaitPopup handleClosePopup={() => togglePopup('showBuyerPopup', false)} />}
-        {popupState.showBuyerAuctionScreen && <BuyerAuctionScreen webSocketProps = {webSocketProps} auction={selectedAuction} remainingTime={remainingTime} handleShowSellerInfo={() => togglePopup('showSellerInfoPopup', true) } closeBuyerPopup={() => {togglePopup('showBuyerAuctionScreen', false); setIsChatClosed(true);}} />}
-        {popupState.showSellerAuctionScreen && <SellerAuctionScreen webSocketProps = {webSocketProps} auction={selectedAuction} remainingTime={remainingTime} closeSellerPage={() => {togglePopup('showSellerAuctionScreen', false); setIsChatClosed(true);}} />}
+        {popupState.showBuyerAuctionScreen && <BuyerAuctionScreen  webSocketProps = {webSocketProps} auction={selectedAuction} remainingTime={remainingTime} handleShowSellerInfo={() => togglePopup('showSellerInfoPopup', true) } openBidConfirmPopup={ () => togglePopup('showBidConfirmationPopup', true) } closeBuyerPopup={() => {togglePopup('showBuyerAuctionScreen', false); setIsChatClosed(true);}} />}
+        {popupState.showSellerAuctionScreen && <SellerAuctionScreen  webSocketProps = {webSocketProps} auction={selectedAuction} remainingTime={remainingTime} closeSellerPage={() => {togglePopup('showSellerAuctionScreen', false); setIsChatClosed(true);}} />}
         {popupState.showSellerInfoPopup && <SellerInfoPopup auction={selectedAuction} handleClosePopup={() => togglePopup('showSellerInfoPopup', false)} />}
-        {popupState.showBidConfirmationPopup && <BidConfirmationPopup bidAmount={webSocketProps.bidAmount} handleClosePopup={() => togglePopup('showBidConfirmationPopup', false)} />}
+        {popupState.showBidConfirmationPopup && <BidConfirmationPopup auction={selectedAuction} webSocketProps = {webSocketProps} handleClosePopup={() => togglePopup('showBidConfirmationPopup', false)} />}
         {popupState.showEndPopup && <AuctionEndPopup auction={selectedAuction} handleClosePopup={() => togglePopup('showEndPopup', false)} />}
       </div>
     );
+
 
   }
 

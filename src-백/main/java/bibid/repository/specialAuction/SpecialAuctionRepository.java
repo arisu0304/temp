@@ -24,4 +24,6 @@ public interface SpecialAuctionRepository extends JpaRepository<Auction, Long> {
     Long countMembersByAuctionIdAndType(@Param("auctionId") Long auctionId);
 
     List<Auction> findByAuctionStatusInAndAuctionType(List<String> statusList, String auctionType);
+
+    List<Auction> findAllByAuctionTypeAndStartingLocalDateTimeAfter(String auctionType, LocalDateTime now);
 }

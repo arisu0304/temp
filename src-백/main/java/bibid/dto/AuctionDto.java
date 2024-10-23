@@ -39,7 +39,6 @@ public class AuctionDto {
     private LocalDateTime moddate; // 경매 수정시간
 
     private List<AuctionImageDto> auctionImageDtoList;
-    private boolean isChatRoomCreated;
     private List<AuctionInfoDto> auctionInfoDtoList;
     private AuctionDetailDto auctionDetailDto;
 
@@ -66,7 +65,6 @@ public class AuctionDto {
                 .moddate(this.moddate)
                 .auctionImageList(new ArrayList<>())
                 .chatRoom(null)
-                .isChatRoomCreated(this.isChatRoomCreated)
                 .auctionDetail(null)
                 .build();
     }

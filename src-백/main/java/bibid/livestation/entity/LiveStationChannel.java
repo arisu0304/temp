@@ -37,12 +37,12 @@ public class LiveStationChannel {
     private String publishUrl;
     private String streamKey;
 
-    @OneToMany(mappedBy = "liveStationChannel", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "liveStationChannel", cascade = CascadeType.ALL)
     private List<LiveStationServiceUrl> serviceUrlList;
 
     private boolean isAvailable;
 
-    public LiveStationChannelDTO toDTo(){
+    public LiveStationChannelDTO toDto(){
         return LiveStationChannelDTO.builder()
                 .liveStationChannelIndex(this.liveStationChannelIndex)
                 .channelId(this.channelId)
